@@ -1,2 +1,1 @@
-#Pebble Watchface with daily quote.
-
+#Pebble Watchface with randomly picked daily quote.
