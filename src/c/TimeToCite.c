@@ -5,7 +5,7 @@
 #define SCREENHEIGHT 168
 #define AUTOSCROLLHEIGHT 2000
 #define QUOTE_Y_BEGIN 60
-
+#define KEY_DAILY_QUOTE 1
 
 static Window *main_window;
 static PropertyAnimation *scroll_animation;
@@ -13,8 +13,8 @@ static TextLayer *text_layer_quote;
 static TextLayer *time_layer;
 static int pixels_to_scroll;
 
-static int daily_quote = -1;
-
+static uint32_t key_daily_quote = 0;
+static uint32_t key_idx_daily_quote = 1;
 
 //quotes collection partly taken from https://litemind.com.
 static char* QUOTES[] = {
@@ -240,15 +240,34 @@ void scroll_quote(int pixels_to_scroll) {
 	animation_schedule((Animation*)scroll_animation);
 }
 
+static int already_quoted(int day){
+	if (persist_exists(key_daily_quote)) {
+		if(day == persist_read_int(key_daily_quote)){
+			return 1;
+		}
+	}
+	persist_write_int(key_daily_quote, day);
+	return 0;
+}
 
-static void update_quote() {
-
+static void update_quote(int idx_quote) {
+	int idx_quote_rand_pick;
 	property_animation_destroy(scroll_animation);
 	text_layer_set_text(text_layer_quote,"");
-	text_layer_set_text(text_layer_quote, QUOTES[rand()%(sizeof(QUOTES)/sizeof(char*))]);
+
+	if (idx_quote == -1){
+		idx_quote_rand_pick = rand()%(sizeof(QUOTES)/sizeof(char*));
+		text_layer_set_text(text_layer_quote, QUOTES[idx_quote_rand_pick]);
+		persist_write_int(key_idx_daily_quote, idx_quote_rand_pick);
+	}
+	else{
+		text_layer_set_text(text_layer_quote, QUOTES[idx_quote]);
+
+	}
 
 	GSize text_size = text_layer_get_content_size(text_layer_quote);
 	pixels_to_scroll = SCREENHEIGHT - QUOTE_Y_BEGIN - text_size.h;
+
 
 
 	if (pixels_to_scroll < 0) {
@@ -256,6 +275,7 @@ static void update_quote() {
 		scroll_quote(pixels_to_scroll);
 	}
 }
+
 
 
 
@@ -270,10 +290,7 @@ static void update_time() {
 
 	text_layer_set_text(time_layer, s_buffer);
 
-	if (daily_quote != tick_time->tm_mday){
-		daily_quote = tick_time->tm_mday;
-		update_quote();
-	}
+
 }
 
 
@@ -282,15 +299,20 @@ static void update_time() {
 
 static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
 	update_time();
-}
+	if (already_quoted(tick_time->tm_yday)==0){
+		update_quote(-1);
+	}
+	else{
+		update_quote(persist_read_int(key_idx_daily_quote));
+	}
 
+}
 
 
 static void main_window_load(Window *window) {
 
 	Layer *window_layer = window_get_root_layer(window);
 	GRect bounds = layer_get_frame(window_layer);
-	GRect max_text_bounds = GRect(0, 0, bounds.size.w, 2000);
 
 	time_layer = text_layer_create(GRect(0, 0, bounds.size.w, QUOTE_Y_BEGIN));
 
@@ -317,7 +339,7 @@ static void main_window_unload(Window *window) {
 
 static void init() {
 	main_window = window_create();
-	
+
 	tick_timer_service_subscribe(MINUTE_UNIT, tick_handler);
 
 	window_set_window_handlers(main_window, (WindowHandlers) {

@@ -19,5 +19,5 @@ REQUESTED_PLATFORMS = [u'aplite', u'basalt', u'chalk', u'diorite']
 RESOURCES_JSON = []
 SUPPORTED_PLATFORMS = ['diorite', 'basalt', 'chalk', 'aplite']
 TARGET_PLATFORMS = ['diorite', 'chalk', 'basalt', 'aplite']
-TIMESTAMP = 1477762262
+TIMESTAMP = 1477851624
 USE_GROUPS = True
